@@ -1,0 +1,105 @@
+import time
+import threading
+from datetime import datetime, timedelta
+from executor import get_executor
+from strategies import get_strategy
+import config
+
+TICKER = "KRW-BTC"
+STRATEGY_NAME = "rsi"
+EXECUTOR_TYPE = "mock"
+INTERVAL = "minute1"
+
+INTERVAL_MAP = {
+    "minute1": 60,
+    "minute3": 180,
+    "minute5": 300,
+    "minute15": 900,
+    "minute30": 1800,
+    "minute60": 3600,
+    "minute240": 14400,
+    "day": 86400,
+}
+INTERVAL_SECONDS = INTERVAL_MAP[INTERVAL]
+
+executor = get_executor(EXECUTOR_TYPE)
+strategy = get_strategy(STRATEGY_NAME)
+
+stop_signal = False
+
+def print_help():
+    print("Available commands:")
+    print(" - status | s      : Show account status")
+    print(" - exit   | q      : Quit auto trading")
+    print(" - help   | h | ?  : Show this help message")
+
+def input_listener():
+    global stop_signal
+    while True:
+        cmd = input().strip().lower()
+        if cmd == "":
+            continue
+        if cmd in ["exit", "q", "quit"]:
+            stop_signal = True
+            break
+        elif cmd in ["status", "s"]:
+            krw = executor.get_krw()
+            btc = executor.get_btc()
+            avg_price = executor.get_avg_buy_price()
+            print("Current Account Status:")
+            print(f" - KRW Balance      : {krw:,.0f} KRW")
+            print(f" - BTC Holdings     : {btc:.8f} BTC")
+            if btc > 0 and avg_price > 0:
+                print(f" - Avg Buy Price    : {avg_price:,.0f} KRW")
+        elif cmd in ["help", "h", "?"]:
+            print_help()
+        else:
+            print(f"[Unknown command] '{cmd}' — type 'help' to see available commands.")
+
+
+threading.Thread(target=input_listener, daemon=True).start()
+
+def wait_until_next_interval(interval_sec: int):
+    now = datetime.now()
+    delta = timedelta(seconds=interval_sec)
+    next_time = (now + delta).replace(second=0, microsecond=0)
+    sleep_time = (next_time - datetime.now()).total_seconds()
+    if sleep_time > 0:
+        time.sleep(sleep_time)
+
+print(f"[Auto Trading Started] Strategy: {STRATEGY_NAME}, Executor: {EXECUTOR_TYPE}, Interval: {INTERVAL}")
+
+while not stop_signal:
+    try:
+        df = executor.fetch_ohlcv(TICKER, interval=INTERVAL).tail(1000)
+        price = df.iloc[-1]['close']
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Current Price: {price:,.0f} KRW")
+
+        # BUY LOGIC
+        if strategy.should_buy(df):
+            krw_balance = executor.get_krw()
+            amount_krw = strategy.buy_amount(krw_balance, price)
+            if amount_krw >= 5000:
+                executor.buy(TICKER, amount_krw)
+
+        # SELL LOGIC (updated)
+        context = {
+            "current_price": price,
+            "avg_buy_price": executor.get_avg_buy_price(TICKER),
+            "btc_balance": executor.get_btc(),
+        }
+
+        should_sell, reason = strategy.should_sell(df, context)
+        if should_sell:
+            btc_balance = context["btc_balance"]
+            amount_btc = strategy.sell_amount(btc_balance, price)
+            if amount_btc >= 0.0001:
+                print(f">> Selling {amount_btc:.8f} BTC due to reason: {reason}")
+                executor.sell(TICKER, amount_btc)
+
+    except Exception as e:
+        print("[Error occurred]", e)
+
+    wait_until_next_interval(INTERVAL_SECONDS)
+
+print("[Auto Trading Stopped]")
