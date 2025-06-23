@@ -45,7 +45,7 @@ def input_listener():
         elif cmd in ["status", "s"]:
             krw = executor.get_krw()
             btc = executor.get_btc()
-            avg_price = executor.get_avg_buy_price()
+            avg_price = executor.get_avg_buy_price(TICKER)
             print("Current Account Status:")
             print(f" - KRW Balance      : {krw:,.0f} KRW")
             print(f" - BTC Holdings     : {btc:.8f} BTC")
