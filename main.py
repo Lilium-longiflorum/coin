@@ -75,25 +75,26 @@ while not stop_signal:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Current Price: {price:,.0f} KRW")
 
         # BUY LOGIC
-        if strategy.should_buy(df):
+        should_buy, buy_strength = strategy.should_buy(df)
+        if should_buy:
             krw_balance = executor.get_krw()
-            amount_krw = strategy.buy_amount(krw_balance, price)
+            amount_krw = strategy.buy_amount(krw_balance, price, buy_strength)
             if amount_krw >= 5000:
                 executor.buy(TICKER, amount_krw)
 
-        # SELL LOGIC (updated)
+        # SELL LOGIC
         context = {
             "current_price": price,
             "avg_buy_price": executor.get_avg_buy_price(TICKER),
             "btc_balance": executor.get_btc(),
         }
 
-        should_sell, reason = strategy.should_sell(df, context)
+        should_sell, reason, sell_strength = strategy.should_sell(df, context)
         if should_sell:
             btc_balance = context["btc_balance"]
-            amount_btc = strategy.sell_amount(btc_balance, price)
+            amount_btc = strategy.sell_amount(btc_balance, price, sell_strength)
             if amount_btc >= 0.0001:
-                print(f">> Selling {amount_btc:.8f} BTC due to reason: {reason}")
+                print(f">> Selling {amount_btc:.8f} BTC due to reason: {reason} (strength: {sell_strength:.2f})")
                 executor.sell(TICKER, amount_btc)
 
     except Exception as e:

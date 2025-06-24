@@ -17,7 +17,8 @@ class MockExecutor(Executor):
         self.avg_buy_price_cache = 0.0
 
     def fetch_ohlcv(self, ticker, interval="minute1"):
-        return pyupbit.get_ohlcv(ticker, interval=interval)
+        df = pyupbit.get_ohlcv(ticker, interval=interval)
+        return df.dropna()
 
     def get_current_price(self, ticker):
         return pyupbit.get_current_price(ticker)
