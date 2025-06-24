@@ -3,12 +3,13 @@ import threading
 from datetime import datetime, timedelta
 from executor import get_executor
 from strategies import get_strategy
+from utils.stop_loss import StopLossDetector
 import config
 
 TICKER = "KRW-BTC"
 STRATEGY_NAME = "rsi"
 EXECUTOR_TYPE = "mock"
-INTERVAL = "minute1"
+INTERVAL = congif.INTERVAL
 
 INTERVAL_MAP = {
     "minute1": 60,
@@ -21,6 +22,7 @@ INTERVAL_MAP = {
     "day": 86400,
 }
 INTERVAL_SECONDS = INTERVAL_MAP[INTERVAL]
+StopLossDetector.candle_interval_minutes = INTERVAL_SECONDS // 60
 
 executor = get_executor(EXECUTOR_TYPE)
 strategy = get_strategy(STRATEGY_NAME)
