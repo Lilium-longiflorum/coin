@@ -9,7 +9,7 @@ import config
 TICKER = "KRW-BTC"
 STRATEGY_NAME = "rsi"
 EXECUTOR_TYPE = "mock"
-INTERVAL = congif.INTERVAL
+INTERVAL = config.INTERVAL
 
 INTERVAL_MAP = {
     "minute1": 60,
