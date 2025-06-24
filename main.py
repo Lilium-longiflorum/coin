@@ -34,6 +34,7 @@ def print_help():
     print(" - status | s      : Show account status")
     print(" - exit   | q      : Quit auto trading")
     print(" - help   | h | ?  : Show this help message")
+    print(" - current| c      : Show current price")
 
 def input_listener():
     global stop_signal
@@ -53,6 +54,9 @@ def input_listener():
             print(f" - BTC Holdings     : {btc:.8f} BTC")
             if btc > 0 and avg_price > 0:
                 print(f" - Avg Buy Price    : {avg_price:,.0f} KRW")
+        elif cmd in ["current", "c"]:
+            c_price = executor.get_current_price(TICKER)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Current Price: {c_price:,.0f} KRW")
         elif cmd in ["help", "h", "?"]:
             print_help()
         else:
