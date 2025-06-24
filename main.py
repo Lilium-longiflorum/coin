@@ -28,6 +28,7 @@ executor = get_executor(EXECUTOR_TYPE)
 strategy = get_strategy(STRATEGY_NAME)
 
 stop_signal = False
+last_candle_time = None
 
 def print_help():
     print("Available commands:")
@@ -35,6 +36,7 @@ def print_help():
     print(" - exit   | q      : Quit auto trading")
     print(" - help   | h | ?  : Show this help message")
     print(" - current| c      : Show current price")
+    print(" - time   | t      : Show current time(Local)")
 
 def input_listener():
     global stop_signal
@@ -57,6 +59,8 @@ def input_listener():
         elif cmd in ["current", "c"]:
             c_price = executor.get_current_price(TICKER)
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Current Price: {c_price:,.0f} KRW")
+        elif cmd in ["time", "t"]:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}]")
         elif cmd in ["help", "h", "?"]:
             print_help()
         else:
@@ -66,22 +70,17 @@ def input_listener():
 threading.Thread(target=input_listener, daemon=True).start()
 
 def wait_until_next_interval(interval_sec: int):
-    now = datetime.now()
+    global last_candle_time
 
-    if config.INTERVAL == "day":
-        next_run = datetime(now.year, now.month, now.day, 9)
-        if now >= next_run:
-            next_run += timedelta(days=1)
-    else:
-        seconds_since_hour = now.minute * 60 + now.second
-        remainder = seconds_since_hour % interval_sec
-        wait_sec = interval_sec - remainder if remainder != 0 else 0
-        next_run = now + timedelta(seconds=wait_sec)
+    while not stop_signal:
+        df = executor.fetch_ohlcv(TICKER, interval=INTERVAL).tail(1000)
+        candle_time = df.index[-1]
 
-    while datetime.now() < next_run:
-        if stop_signal:
+        if last_candle_time != candle_time:
+            last_candle_time = candle_time
             break
-        time.sleep(0.3)
+
+        time.sleep(1)
 
 
 print(f"[Auto Trading Started] Strategy: {STRATEGY_NAME}, Executor: {EXECUTOR_TYPE}, Interval: {INTERVAL}")
@@ -90,6 +89,7 @@ while not stop_signal:
     try:
         df = executor.fetch_ohlcv(TICKER, interval=INTERVAL).tail(1000)
         price = df.iloc[-1]['close']
+        last_candle_time = df.index[-1]
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Current Price: {price:,.0f} KRW")
 
         # BUY LOGIC
