@@ -66,11 +66,23 @@ def input_listener():
 threading.Thread(target=input_listener, daemon=True).start()
 
 def wait_until_next_interval(interval_sec: int):
-    end_time = datetime.now() + timedelta(seconds=interval_sec)
-    while datetime.now() < end_time:
+    now = datetime.now()
+
+    if config.INTERVAL == "day":
+        next_run = datetime(now.year, now.month, now.day, 9)
+        if now >= next_run:
+            next_run += timedelta(days=1)
+    else:
+        seconds_since_hour = now.minute * 60 + now.second
+        remainder = seconds_since_hour % interval_sec
+        wait_sec = interval_sec - remainder if remainder != 0 else 0
+        next_run = now + timedelta(seconds=wait_sec)
+
+    while datetime.now() < next_run:
         if stop_signal:
             break
-        time.sleep(0.5)
+        time.sleep(0.3)
+
 
 print(f"[Auto Trading Started] Strategy: {STRATEGY_NAME}, Executor: {EXECUTOR_TYPE}, Interval: {INTERVAL}")
 
